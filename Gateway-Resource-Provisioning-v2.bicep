@@ -3,6 +3,9 @@ targetScope='resourceGroup'
 
 // Parameters
 param resourceGroupLocation string = 'uksouth' // Specify the desired Azure region
+
+param containerAppEnvName string = 'Gateway-Container-Environment-IAC' //The name of the Container App Environment
+param appInsightsName string = 'gateway-iac-appinsights' // Name of the existing Application Insights instance
 param serviceBusName string = 'gateway-iac-messaging'
 param sqlServerName string = 'gateway-iac-sqlserver' // Unique name for SQL Server
 param keyVaultName string = 'gateway-iac-keyvault'// Name of the existing Key Vault containing the secrets
@@ -12,6 +15,12 @@ param keyVaultResourceGroup string = 'gateway-resources-iac' // Resource group c
 
 param containerAppLogAnalyticsName string = 'log-${uniqueString(resourceGroup().id)}' // Unique name for the Log Analytics workspace
 param sqlAdminUsername string = 'gatewaySqlAdmin' // Default SQL admin username
+
+var tags = {
+  environment: 'production'
+  owner: 'Will Velida'
+  application: 'lets-build-aca'
+}
 
 // Retrieve SQL admin username and password from Key Vault
 resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
@@ -33,7 +42,7 @@ module logAnalyticsWithAppInsightsModule './logs.bicep' = {
   params: {
     location: resourceGroupLocation
     logAnalyticsWorkspaceName: 'myLogAnalyticsWorkspace'
-    appInsightsName: 'myAppInsights'
+    appInsightsName: appInsightsName
     logAnalyticsSkuName: 'PerGB2018'
     retentionInDays: 90
   }
@@ -69,7 +78,7 @@ var topics = [
 
 // Create each topic in the Service Bus Namespace
 resource serviceBusTopics 'Microsoft.ServiceBus/namespaces/topics@2021-11-01' = [for topic in topics: {
-  name: '${serviceBusNamespace.name}-${topic}'
+  name: '${topic}'
   parent: serviceBusNamespace
   properties: {
     defaultMessageTimeToLive: 'P14D' // Example setting, adjust as necessary
@@ -84,4 +93,24 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
       name: 'PerGB2018'
     }
   }
+}
+
+module containerApp './gat-req-api-container-app.bicep' = {
+  name: 'containerAppDeployment'
+  params: {
+    containerAppEnvName: containerAppEnvName
+    location: resourceGroupLocation
+    tags: tags
+    keyVaultName: keyVaultName
+    appInsightsName: appInsightsName
+    sqlServerName: sqlServerName
+    sqlDatabaseName: 'Gateway'
+    serviceBusName: serviceBusName
+  }
+  dependsOn: [
+    kv
+    sql
+    logAnalyticsWithAppInsightsModule
+    serviceBusNamespace
+  ]
 }
