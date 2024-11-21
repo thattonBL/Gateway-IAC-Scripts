@@ -18,8 +18,8 @@ param sqlAdminUsername string = 'gatewaySqlAdmin' // Default SQL admin username
 
 var tags = {
   environment: 'production'
-  owner: 'Will Velida'
-  application: 'lets-build-aca'
+  owner: 'British Library'
+  application: 'Gateway'
 }
 
 // Retrieve SQL admin username and password from Key Vault
@@ -95,22 +95,39 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   }
 }
 
-module containerApp './gat-req-api-container-app.bicep' = {
-  name: 'containerAppDeployment'
+module gatewayReqApiContainerApp './gateway-container-app.bicep' = {
+  name: 'gatewayReqApiContainerAppDeployment'
   params: {
     containerAppEnvName: containerAppEnvName
     location: resourceGroupLocation
     tags: tags
-    keyVaultName: keyVaultName
     appInsightsName: appInsightsName
-    sqlServerName: sqlServerName
-    sqlDatabaseName: 'Gateway'
     serviceBusName: serviceBusName
+    sqlConnString: kv.getSecret('SqlDbConnectionString')
+    dockerImage: 'attonbomb/gateway-request-api:latest'
+    containerAppName: 'gateway-request-api-iac'
   }
   dependsOn: [
     kv
     sql
     logAnalyticsWithAppInsightsModule
     serviceBusNamespace
+  ]
+}
+
+module globalIntApiContainerApp './gateway-container-app.bicep' = {
+  name: 'globalIntApiContainerAppDeployment'
+  params: {
+    containerAppEnvName: containerAppEnvName
+    location: resourceGroupLocation
+    tags: tags
+    appInsightsName: appInsightsName
+    serviceBusName: serviceBusName
+    sqlConnString: kv.getSecret('GlobalSqlDbConnectionString')
+    dockerImage: 'attonbomb/gateway-global-integration-api:latest'
+    containerAppName: 'gateway-global-int-api-iac'
+  }
+  dependsOn: [
+    gatewayReqApiContainerApp
   ]
 }

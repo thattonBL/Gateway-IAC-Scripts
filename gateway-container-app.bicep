@@ -10,8 +10,8 @@ param containerRegistryName string*/
 @description('The tags to apply to this resource')
 param tags object
 
-@description('The name of the Key Vault')
-param keyVaultName string
+/*@description('The name of the Key Vault')
+param keyVaultName string*/
 
 @description('The name of the Application Insights workspace')
 param appInsightsName string
@@ -19,15 +19,16 @@ param appInsightsName string
 @description('The name of the Azure Service Bus')
 param serviceBusName string
 
-@description('The name of the SQL Server')
-param sqlServerName string
+@description('The name and tag of the dockerHub image')
+param dockerImage string
 
-@description('The name of the SQL Database')
-param sqlDatabaseName string
+@description('The name of the container app in Azure')
+param containerAppName string
 
-var containerAppName = 'gateway-request-api-iac'
+@secure()
+param sqlConnString string
 //var acrPullRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-var keyVaultSecretUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+//var keyVaultSecretUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 
 resource env 'Microsoft.App/managedEnvironments@2023-11-02-preview' existing = {
   name: containerAppEnvName
@@ -37,9 +38,9 @@ resource env 'Microsoft.App/managedEnvironments@2023-11-02-preview' existing = {
   name: containerRegistryName
 }*/
 
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing =  {
+/*resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing =  {
   name: keyVaultName
-}
+}*/
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: appInsightsName
@@ -47,6 +48,11 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
 
 resource serviceBus 'Microsoft.ServiceBus/namespaces@2021-11-01' existing = {
   name: serviceBusName
+}
+
+resource userAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'Gateway-IAC-Identity'
+  location: location
 }
 
 resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
@@ -77,24 +83,15 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
       secrets: [
         {
           name: 'sql-db-connection-string'
-          value: 'Server=tcp://${sqlServerName}.database.windows.net,1433;Initial Catalog=${sqlDatabaseName};Encrypt=true;Connection Timeout=30;'
+          value: sqlConnString
         }
         {
           name: 'azure-service-bus-connection-string'
           value: serviceBus.properties.serviceBusEndpoint
         }
         {
-          name: 'app-insights-key'
-          value: appInsights.properties.InstrumentationKey
-        }
-        {
           name: 'app-insights-connection-string'
           value: appInsights.properties.ConnectionString
-        }
-        {
-          name: 'sql-db-connection-string-kv'
-          keyVaultUrl: 'https://${keyVault.name}.vault.azure.net/secrets/SqlDbConnectionString'
-          identity: 'system'
         }
       ]
       activeRevisionsMode: 'Multiple'
@@ -103,12 +100,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
       containers: [
         {
           name: containerAppName
-          image: 'attonbomb/gateway-request-api:latest'
+          image: dockerImage //'attonbomb/gateway-request-api:latest'
           env: [
-            {
-              name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-              secretRef: 'app-insights-key'
-            }
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               secretRef: 'app-insights-connection-string'
@@ -117,9 +110,9 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
               name: 'SQL_DB_CONNECTION_STRING'
               secretRef: 'sql-db-connection-string'
             }
-            {
-              name: 'SQL_DB_CONNECTION_KV'
-              secretRef: 'sql-db-connection-string-kv'
+            { 
+              name: 'AZURE_SERVICE_BUS_CONNECTION_STRING'
+              secretRef: 'azure-service-bus-connection-string'
             }
           ]
           resources: {
@@ -129,7 +122,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 3
         rules: [
           {
@@ -145,11 +138,30 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
     }
   }
   identity: {
-    type: 'SystemAssigned'
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${userAssignedIdentity.id}': {}
+    }
   }
 }
 
-resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+/*resource kvAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = {
+  parent: keyVault
+  name: 'add'
+  properties: {
+    accessPolicies: [
+      {
+        tenantId: subscription().tenantId
+        objectId: userAssignedIdentity.properties.principalId
+        permissions: {
+          secrets: ['get']
+        }
+      }
+    ]
+  }
+}*/
+
+/*resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(containerApp.id, keyVaultSecretUserRoleId)
   scope: keyVault
   properties: {
@@ -157,7 +169,7 @@ resource keyVaultSecretUserRoleAssignment 'Microsoft.Authorization/roleAssignmen
     roleDefinitionId: keyVaultSecretUserRoleId
     principalType: 'ServicePrincipal'
   }
-}
+}*/
 
 /*resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(acr.id, containerApp.id, acrPullRoleId)
