@@ -55,6 +55,9 @@ resource userAssignedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@
   location: location
 }
 
+var serviceBusEndpoint = '${serviceBus.id}/AuthorizationRules/RootManageSharedAccessKey'
+var serviceBusConnectionString = listKeys(serviceBusEndpoint, serviceBus.apiVersion).primaryConnectionString
+
 resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
   name: containerAppName
   tags: tags
@@ -87,7 +90,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
         }
         {
           name: 'azure-service-bus-connection-string'
-          value: serviceBus.properties.serviceBusEndpoint
+          value: serviceBusConnectionString
         }
         {
           name: 'app-insights-connection-string'

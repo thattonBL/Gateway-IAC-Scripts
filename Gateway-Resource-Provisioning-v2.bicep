@@ -29,7 +29,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
 }
 
 module sql './sql.bicep' = {
-  name: 'deploySQL'
+  name: 'deploySQLDatabases'
   params: {
     sqlServerName: sqlServerName
     sqlAdminUsername: sqlAdminUsername
@@ -68,13 +68,22 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2021-11-01' = {
 }
 
 // Define topics to create within the namespace
-var topics = [
-  'newrsimessagerecieved.integrationevent'
+var bothTopics = [
   'newrsimessagesubmitted.integrationevent'
+]
+
+var globalTopics = [
+  'newrsimessagerecieved.integrationevent'
   'restartconsumerrequest.integrationevent'
+  'requeststatuschangedtocancelled.integrationEvent'
+]
+
+var gatewayTopics = [
   'rsimessagepublished.integrationevent'
   'stopconsumerrequest.integrationevent'
 ]
+
+var topics = union(bothTopics, globalTopics, gatewayTopics)
 
 // Create each topic in the Service Bus Namespace
 resource serviceBusTopics 'Microsoft.ServiceBus/namespaces/topics@2021-11-01' = [for topic in topics: {
@@ -83,6 +92,48 @@ resource serviceBusTopics 'Microsoft.ServiceBus/namespaces/topics@2021-11-01' = 
   properties: {
     defaultMessageTimeToLive: 'P14D' // Example setting, adjust as necessary
   }
+}]
+
+module globalServiceBusSubscriptions './Subscriptions.bicep' = [for globtopic in globalTopics: {
+  name: 'glSrvBusSubDep.${globtopic}'
+  params: {
+    servicebusNamespaceName: serviceBusNamespace.name
+    topicName: globtopic
+    subscriptions: [
+      'gateway_global_integration_evts'
+    ]
+  }
+  dependsOn: [
+    serviceBusTopics
+  ]
+}]
+
+module gatewayServiceBusSubscriptions './Subscriptions.bicep' = [for gatetopic in gatewayTopics: {
+  name: 'gateServBusSubDeploy.${gatetopic}'
+  params: {
+    servicebusNamespaceName: serviceBusNamespace.name
+    topicName: gatetopic
+    subscriptions: [
+      'gateway_integration_evts'
+    ]
+  }
+  dependsOn: [
+    serviceBusTopics
+  ]
+}]
+
+module bothServiceBusSubscriptions './Subscriptions.bicep' = [for bothtopic in bothTopics: {
+  name: 'bothServBusSubDeploy.${bothtopic}'
+  params: {
+    servicebusNamespaceName: serviceBusNamespace.name
+    topicName: bothtopic
+    subscriptions: [
+      'gateway_integration_evts', 'gateway_global_integration_evts'
+    ]
+  }
+  dependsOn: [
+    serviceBusTopics
+  ]
 }]
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
