@@ -70,17 +70,17 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2021-11-01' = {
 // Define topics to create within the namespace
 var bothTopics = [
   'newrsimessagesubmitted.integrationevent'
+  'rsimessagepublished.integrationevent'
 ]
 
 var globalTopics = [
   'newrsimessagerecieved.integrationevent'
-  'restartconsumerrequest.integrationevent'
   'requeststatuschangedtocancelled.integrationEvent'
 ]
 
-var gatewayTopics = [
-  'rsimessagepublished.integrationevent'
+var gatewayTopics = [ 
   'stopconsumerrequest.integrationevent'
+  'restartconsumerrequest.integrationevent'
 ]
 
 var topics = union(bothTopics, globalTopics, gatewayTopics)
