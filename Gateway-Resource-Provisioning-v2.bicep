@@ -13,6 +13,7 @@ param keyVaultResourceGroup string // Resource group containing the Key Vault
 param containerAppLogAnalyticsName string // Unique name for the Log Analytics workspace
 param sqlAdminUsername string // Default SQL admin username
 param globalIntUiBaseUrl string
+param redisCacheName string // Name of the Redis Cache instance
 
 var tags = {
   environment: 'production'
@@ -144,6 +145,26 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   }
 }
 
+resource redisCache 'Microsoft.Cache/Redis@2023-08-01' existing = {
+  name: redisCacheName
+}
+
+module build33ContainerApp './building33-container-app.bicep' = {
+  name: 'building33ContainerAppDeployment'
+  params: {
+    containerAppName: 'building33-mock-api-iac'
+    tags: tags
+    location: resourceGroupLocation
+    containerAppEnvName: containerAppEnvName
+    appInsightsName: appInsightsName
+    redisHostUrl: kv.getSecret('RedisHostUrl')
+    dockerImage: 'attonbomb/building33mockapi:latest'
+  }
+  dependsOn: [
+    redisCache
+  ]
+}
+
 module gatewayReqApiContainerApp './gateway-container-app.bicep' = {
   name: 'gatewayReqApiContainerAppDeployment'
   params: {
@@ -215,10 +236,11 @@ module grpcContainerApp './gateway-container-app.bicep' = {
     sqlConnString: kv.getSecret('GrpcSqlDbConnectionString')
     dockerImage: 'attonbomb/gatewaygrpcservice:latest'
     containerAppName: 'gateway-grpc-service-iac'
-    gatewayUiBaseUrl: 'not-needed'
+    gatewayUiBaseUrl: build33ContainerApp.outputs.containerAppBaseUrl
     gatewayApiBaseUrl: 'not-needed'
   }
   dependsOn: [
+    build33ContainerApp
     globalIntUiContainerApp
   ]
 }

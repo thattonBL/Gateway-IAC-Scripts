@@ -2,6 +2,12 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+      "subscriptionId": {
+        "value": "c3a3d8e1-1944-4ac2-ba0b-d1c3f7408db9"
+      },
+      "containerAppLogAnalyticsName": {
+        "value": "gateway-iac-loganalytics"
+      },
       "resourceGroupLocation": {
         "value": "uksouth"
       },
@@ -28,6 +34,9 @@
       },
       "globalIntUiBaseUrl": {
         "value": "https://gateway-global-int-ui-iac.thankfulocean-ad22b7d0.uksouth.azurecontainerapps.io"
+      },
+      "redisCacheName": {
+        "value": "gateway-iac-redis"
       }
     }
   }
