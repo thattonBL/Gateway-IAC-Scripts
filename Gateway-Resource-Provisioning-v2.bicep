@@ -1,21 +1,17 @@
 //DEfine the scope
 targetScope='resourceGroup'
 
-// Parameters
+// Parameters see parameters.json for values
 param resourceGroupLocation string // Specify the desired Azure region
-
 param containerAppEnvName string //The name of the Container App Environment
 param appInsightsName string // Name of the existing Application Insights instance
-param serviceBusName string  
+param serviceBusName string // Name of the service Bus
 param sqlServerName string // Unique name for SQL Server
 param keyVaultName string // Name of the existing Key Vault containing the secrets
-
-param subscriptionId string 
+param subscriptionId string // Dynamically retrieved
 param keyVaultResourceGroup string // Resource group containing the Key Vault
-
 param containerAppLogAnalyticsName string // Unique name for the Log Analytics workspace
 param sqlAdminUsername string // Default SQL admin username
-
 param globalIntUiBaseUrl string
 
 var tags = {
