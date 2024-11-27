@@ -2,19 +2,21 @@
 targetScope='resourceGroup'
 
 // Parameters
-param resourceGroupLocation string = 'uksouth' // Specify the desired Azure region
+param resourceGroupLocation string // Specify the desired Azure region
 
-param containerAppEnvName string = 'Gateway-Container-Environment-IAC' //The name of the Container App Environment
-param appInsightsName string = 'gateway-iac-appinsights' // Name of the existing Application Insights instance
-param serviceBusName string = 'gateway-iac-messaging'
-param sqlServerName string = 'gateway-iac-sqlserver' // Unique name for SQL Server
-param keyVaultName string = 'gateway-iac-keyvault'// Name of the existing Key Vault containing the secrets
+param containerAppEnvName string //The name of the Container App Environment
+param appInsightsName string // Name of the existing Application Insights instance
+param serviceBusName string  
+param sqlServerName string // Unique name for SQL Server
+param keyVaultName string // Name of the existing Key Vault containing the secrets
 
-param subscriptionId string = subscription().subscriptionId
-param keyVaultResourceGroup string = 'gateway-resources-iac' // Resource group containing the Key Vault
+param subscriptionId string 
+param keyVaultResourceGroup string // Resource group containing the Key Vault
 
-param containerAppLogAnalyticsName string = 'log-${uniqueString(resourceGroup().id)}' // Unique name for the Log Analytics workspace
-param sqlAdminUsername string = 'gatewaySqlAdmin' // Default SQL admin username
+param containerAppLogAnalyticsName string // Unique name for the Log Analytics workspace
+param sqlAdminUsername string // Default SQL admin username
+
+param globalIntUiBaseUrl string
 
 var tags = {
   environment: 'production'
@@ -157,6 +159,8 @@ module gatewayReqApiContainerApp './gateway-container-app.bicep' = {
     sqlConnString: kv.getSecret('SqlDbConnectionString')
     dockerImage: 'attonbomb/gateway-request-api:latest'
     containerAppName: 'gateway-request-api-iac'
+    gatewayUiBaseUrl: 'not-needed'
+    gatewayApiBaseUrl: 'not-needed'
   }
   dependsOn: [
     kv
@@ -177,8 +181,48 @@ module globalIntApiContainerApp './gateway-container-app.bicep' = {
     sqlConnString: kv.getSecret('GlobalSqlDbConnectionString')
     dockerImage: 'attonbomb/gateway-global-integration-api:latest'
     containerAppName: 'gateway-global-int-api-iac'
+    gatewayUiBaseUrl: globalIntUiBaseUrl
+    gatewayApiBaseUrl: 'not-needed'
   }
   dependsOn: [
     gatewayReqApiContainerApp
+  ]
+}
+
+module globalIntUiContainerApp './gateway-container-app.bicep' = {
+  name: 'globalIntUiContainerAppDeployment'
+  params: {
+    containerAppEnvName: containerAppEnvName
+    location: resourceGroupLocation
+    tags: tags
+    appInsightsName: appInsightsName
+    serviceBusName: serviceBusName
+    sqlConnString: 'no-db'
+    dockerImage: 'attonbomb/systemadmin:latest'
+    containerAppName: 'gateway-global-int-ui-iac'
+    gatewayUiBaseUrl: 'not-needed'
+    gatewayApiBaseUrl: globalIntApiContainerApp.outputs.containerAppBaseUrl
+  }
+  dependsOn: [
+    globalIntApiContainerApp
+  ]
+}
+
+module grpcContainerApp './gateway-container-app.bicep' = {
+  name: 'grpcContainerAppDeployment'
+  params: {
+    containerAppEnvName: containerAppEnvName
+    location: resourceGroupLocation
+    tags: tags
+    appInsightsName: appInsightsName
+    serviceBusName: serviceBusName
+    sqlConnString: kv.getSecret('GrpcSqlDbConnectionString')
+    dockerImage: 'attonbomb/gatewaygrpcservice:latest'
+    containerAppName: 'gateway-grpc-service-iac'
+    gatewayUiBaseUrl: 'not-needed'
+    gatewayApiBaseUrl: 'not-needed'
+  }
+  dependsOn: [
+    globalIntUiContainerApp
   ]
 }
