@@ -162,6 +162,7 @@ module build33ContainerApp './building33-container-app.bicep' = {
   }
   dependsOn: [
     redisCache
+    logAnalyticsWithAppInsightsModule
   ]
 }
 
