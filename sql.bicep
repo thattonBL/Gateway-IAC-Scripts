@@ -1,7 +1,7 @@
 param sqlServerName string
 param location string = resourceGroup().location
 param sqlAdminUsername string
-//param storageAccountName string = 'gatewayiacstorage'
+param databaseNames array
 
 @secure()
 param sqlAdminPassword string
@@ -17,13 +17,6 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
     restrictOutboundNetworkAccess: 'Disabled'
   }
 }
-
-// List of database names to create
-var databaseNames = [
-  'Gateway'
-  'Global_Integration'
-  'Gateway_GRPC'
-]
 
 // Create each SQL Database
 resource sqlDatabases 'Microsoft.Sql/servers/databases@2022-02-01-preview' = [for dbName in databaseNames:{
