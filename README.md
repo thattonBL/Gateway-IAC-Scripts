@@ -11,9 +11,9 @@ Then the following additional Resources are also required:
      - Keyvault
      - Azure Redis Cache
 
-![Existing-Resources PNG](https://github.com/user-attachments/assets/6b105fb8-8d89-4b40-abb2-ca0f64ee79bb)
+<img src="https://github.com/user-attachments/assets/6b105fb8-8d89-4b40-abb2-ca0f64ee79bb" width="400"/>
 
-Resource Group - If you want the scripts to run with as little editing as possible then call the Resource group Gateway-Resources-IAC 
+Resource Group - If you want the scripts to run with as little editing as possible then call the Resource group "Gateway-Resources-IAC" 
 
-The Container App Environment - I do not know of a way of simply creating a Container App Environment on its own. Therefore we need to create a Container App that propmts us to create a Container App Environment and then delete the Container App itself leaving on the Environment behind.
+The Container App Environment - I do not know of a way of simply creating a Container App Environment on its own. Therefore we need to create a Container App that propmts us to create a Container App Environment and then delete the Container App itself leaving only the Environment behind.
 You can create a Container App from any DockerHub image tag e.g. attonbomb/gateway-request-api:latest
