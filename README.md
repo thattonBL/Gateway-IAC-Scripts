@@ -29,7 +29,48 @@ Azure Cache for Redis - Azure Cache for Redis has to be created manually because
 # Running The Scripts 
 First thing we need to be clear about is that the scripts won't succeed in provisioning all the resources at the first time of asking... because some of the resources need to be created and values retrieved about those resources to allow the other resources to be correctly provisioned. It's a kind of chicken and egg situation. Fortunately the operation of provisioning these resources is idempotent which means we only recreate those thing which failed, existing successfully created resources are not recreated the second time we run the scripts.
 
-Before the scripts can run successfully we need the three databases, Gateway, GRPC and Global to be created so that we can add the connection strings of these databases as secrets to our Keyvault. Beware that the connection string value will not include your password rather it will have {password} as a placeholder. Before you save the secret you need to paste the value into a text editor and replace this placeholder with your sql password you created before. See the completed list of secrets below:
+The main script of the solution is the Gateway-Resource-Provisioning-v2.bicep this script references the other scripts in the solution which are bicep modules. Before the scripts can run successfully we need the three databases, Gateway, GRPC and Global to be created so that we can add the connection strings of these databases as secrets to our Keyvault. Beware that the connection string value will not include your password rather it will have {password} as a placeholder. Before you save the secret you need to paste the value into a text editor and replace this placeholder with the sql password you created before. See the completed list of secrets below:
 
 ![Secrets](https://github.com/user-attachments/assets/436d4c8c-977c-4bb3-8671-c3899a0850a8)
 
+The other important file to be aware of at the point is the parameters.json file. This file defines names of resources that are going to be created by the script. The following values within this file are required to unique.
+- subscriptionId  Your Azure Subscription guid ( Get this from Azure )
+- serviceBusName
+- sqlServerName
+- keyVaultName
+- redisCacheName (The name of the manually created Redis Cache )
+- globalIntUiBaseUrl (Add this once the gateway-global-int-ui-iac has been successfully provisioned. Azure will create a unique host name for your services)
+
+You may need to delete the Global Integration Api and the Global Integration UI once these final values have been added so that they are re-provisioned with the right connection string parameters to be able to talk to one another.
+
+You will know if it is all working when you POST and message via the Gateway Request API and it appears in real-time in the Global Integration UI and also it is shown in the Building 33 Mock API when you refresh the page.
+The format of the POST json for and RSI message is as follows. The "identifier" value must be unique:
+
+{
+  "message": {
+    "collectionCode": "TST",
+    "shelfmark": "tstMark",
+    "volumeNumber": "123",
+    "storageLocationCode": "33",
+    "author": "Christopher James",
+    "title": "A History of Yesterday",
+    "publicationDate": "23-04-2024",
+    "periodicalDate": "23-04-2024",
+    "articleLine1": "hello",
+    "articleLine2": "buddy",
+    "catalogueRecordUrl": "http://some/catalog/url",
+    "furtherDetailsUrl": "http://further/deets",
+    "dtRequired": "23-04-2024",
+    "route": "homeward bound",
+    "readingRoomStaffArea": "true",
+    "seatNumber": "15",
+    "readingCategory": "fiction",
+    "identifier": "ABC123",
+    "readerName": "Herod Antipas",
+    "readerType": "1",
+    "operatorInformation": "Have a word",
+    "itemIdentity": "The life and times of a silly boy"
+  }
+}
+
+Run the script
