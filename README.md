@@ -26,4 +26,4 @@ Keyvault - Create a Keyvault and add a Secret (accepting the defaults) called sq
 
 Azure Cache for Redis - Azure Cache for Redis has to be created manually because only the Premium pricing teir allows you to provision this resource using Infrastructure as code. We want to use the "Standard" pricing tier. In the Advanced tab we Enable the Non-TLS port option and als enable the Access Keys Authentication which will prompt us to disable the Microsoft Entra Authentication. Once the resource has been created we need to get the connection string and add it to our previouslt created Keyvault. Open our Azure Redis Cache resource and go to Settings->Authentication and then the Acces Keys tab. From there we can take the Primary connection string and add it to our Keyvault as a new Secret named RedisHostUrl. The Redis Cache provides persistence for out Building 33 Mock Api application.
 
-
+# Running The Scripts 
