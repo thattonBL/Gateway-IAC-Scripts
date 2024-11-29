@@ -1,5 +1,5 @@
 # Gateway-IAC-Scripts
-Infrastructure As Code Bicep Scripts for provisioning resources for the gateway demo application.
+These are Infrastructure as Code bicep scripts for provisioning resources for the gateway demo application. Follow the steps below to setup your environment from scratch.
 
 # Manually Creating the Required Existing Azure Resources
 Assuming you already have an Azure Subscription. Your Azure subscription needs to have the Key Vault Administrator Role. Go to your subscription and in the menu on the left select Access control (IAM). Select "Add" in the top tabs and search for the "Key Vault Administrator", select that row and click next at the bottom of the screen. Following the prompts to add the role.
