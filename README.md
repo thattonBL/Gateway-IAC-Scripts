@@ -46,6 +46,7 @@ You may need to delete the Global Integration Api and the Global Integration UI 
 You will know if it is all working when you POST and message via the Gateway Request API and it appears in real-time in the Global Integration UI and also it is shown in the Building 33 Mock API when you refresh the page.
 The format of the POST json for and RSI message is as follows. The "identifier" value must be unique:
 
+```json
 {
   "message": {
     "collectionCode": "TST",
@@ -72,5 +73,4 @@ The format of the POST json for and RSI message is as follows. The "identifier" 
     "itemIdentity": "The life and times of a silly boy"
   }
 }
-
-Run the script
+```
