@@ -1,7 +1,13 @@
 param sqlServerName string
 param location string = resourceGroup().location
 param sqlAdminUsername string
-param databaseNames array
+
+
+param databaseNames array = [
+  'Gateway'
+  'Global_Integration'
+  'Gateway_GRPC'
+]
 
 @secure()
 param sqlAdminPassword string

@@ -34,13 +34,6 @@ module sql './sql.bicep' = {
     sqlServerName: sqlServerName
     sqlAdminUsername: sqlAdminUsername
     sqlAdminPassword: kv.getSecret('sqlAdminPassword')
-    databaseNames: [
-      [
-        'Gateway'
-        'Global_Integration'
-        'Gateway_GRPC'
-      ]
-    ]
   }
 }
 
