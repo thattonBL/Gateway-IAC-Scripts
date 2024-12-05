@@ -33,6 +33,16 @@ The main script of the solution is the Gateway-Resource-Provisioning-v2.bicep th
 
 ![Secrets](https://github.com/user-attachments/assets/436d4c8c-977c-4bb3-8671-c3899a0850a8)
 
+Now you have the databases, you need to initialise the table structures using the init.sql file from the associated repositories for each service.
+
+ - [Gateway Request API](https://github.com/thattonBL/GatewayRequestApi)
+ - [Global Integration API](https://github.com/thattonBL/GlobalIntegrationApi)
+ - [Gateway GRPC Service](https://github.com/thattonBL/GatewayGrpcService)
+
+At the root of each repo there is a directory whose name ends in _data within that directory is the init.sql file. Removing the top section of SQL from these files, that creates the database for the dev environment, take everything below, that creates the tables, foreign keys and stored procedures, and paste it into the Query Editor Window for each of the associated Azure Databases that you have provisioned.
+
+Note: The first time you login to any database on the newly created server it will block your access but ask you to click a link to allow firewall access. Click the link and hit OK again and you will enter the Query Editor for your database.
+
 The other important file to be aware of at the point is the parameters.json file. This file defines names of resources that are going to be created by the script. The following values within this file are required to unique.
 - subscriptionId  Your Azure Subscription guid ( Get this from Azure )
 - serviceBusName
