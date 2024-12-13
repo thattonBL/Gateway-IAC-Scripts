@@ -37,6 +37,21 @@
       },
       "redisCacheName": {
         "value": "gateway-iac-redis"
+      },
+      "b33MockApiName": {
+        "value": "building33-mock-api-iac"
+      },
+      "gatewayReqApiName": {
+        "value": "gateway-request-api-iac"
+      },
+      "globalIntApiName": {
+        "value": "gateway-global-int-api-iac"
+      },
+      "globalIntUiName": {
+        "value": "gateway-global-int-ui-iac"
+      },
+      "grpcServiceName": {
+        "value": "gateway-grpc-service-iac"
       }
     }
   }

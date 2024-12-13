@@ -14,6 +14,11 @@ param containerAppLogAnalyticsName string // Unique name for the Log Analytics w
 param sqlAdminUsername string // Default SQL admin username
 param globalIntUiBaseUrl string
 param redisCacheName string // Name of the Redis Cache instance
+param b33MockApiName string // Name for the B33 Mock API container app
+param gatewayReqApiName string // Name for the Gateway Request API container app
+param globalIntApiName string // Name for the Global Integration API container app
+param globalIntUiName string // Name for the Global Integration UI container app
+param grpcServiceName string // Name for the GRPC service container app
 
 var tags = {
   environment: 'production'
@@ -163,7 +168,7 @@ resource redisCache 'Microsoft.Cache/Redis@2023-08-01' existing = {
 module build33ContainerApp './building33-container-app.bicep' = {
   name: 'building33ContainerAppDeployment'
   params: {
-    containerAppName: 'building33-mock-api-iac'
+    containerAppName: b33MockApiName
     tags: tags
     location: resourceGroupLocation
     containerAppEnvName: containerAppEnvName
@@ -188,7 +193,7 @@ module gatewayReqApiContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: kv.getSecret('SqlDbConnectionString')
     dockerImage: 'attonbomb/gateway-request-api:latest'
-    containerAppName: 'gateway-request-api-iac'
+    containerAppName: gatewayReqApiName
     gatewayUiBaseUrl: 'not-needed'
     gatewayApiBaseUrl: 'not-needed'
   }
@@ -211,7 +216,7 @@ module globalIntApiContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: kv.getSecret('GlobalSqlDbConnectionString')
     dockerImage: 'attonbomb/gateway-global-integration-api:latest'
-    containerAppName: 'gateway-global-int-api-iac'
+    containerAppName: globalIntApiName
     gatewayUiBaseUrl: globalIntUiBaseUrl
     gatewayApiBaseUrl: 'not-needed'
   }
@@ -231,7 +236,7 @@ module globalIntUiContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: 'no-db'
     dockerImage: 'attonbomb/systemadmin:latest'
-    containerAppName: 'gateway-global-int-ui-iac'
+    containerAppName: globalIntUiName
     gatewayUiBaseUrl: 'not-needed'
     gatewayApiBaseUrl: globalIntApiContainerApp.outputs.containerAppBaseUrl
   }
@@ -251,7 +256,7 @@ module grpcContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: kv.getSecret('GrpcSqlDbConnectionString')
     dockerImage: 'attonbomb/gatewaygrpcservice:latest'
-    containerAppName: 'gateway-grpc-service-iac'
+    containerAppName: grpcServiceName
     gatewayUiBaseUrl: build33ContainerApp.outputs.containerAppBaseUrl
     gatewayApiBaseUrl: 'not-needed'
   }
@@ -260,3 +265,31 @@ module grpcContainerApp './gateway-container-app.bicep' = {
     globalIntUiContainerApp
   ]
 }
+
+// List of all the applications to create availability tests for
+var availabilityTestApps = [
+  b33MockApiName
+  gatewayReqApiName
+  globalIntApiName
+  grpcServiceName
+]
+
+// Create an availability test for each application in the list
+module availabilityTests './availability-test.bicep' = [for app in availabilityTestApps: {
+  name: 'availability-test-${app}'
+  params: {
+    location: resourceGroupLocation
+    appInsightsName: appInsightsName
+    containerAppName: app
+    testEndpoint: '/health'
+    testLocations: [
+      'emea-ru-msa-edge' // UK South
+    ]
+  }
+  dependsOn: [
+    build33ContainerApp
+    gatewayReqApiContainerApp
+    globalIntApiContainerApp
+    grpcContainerApp
+  ]
+}]
