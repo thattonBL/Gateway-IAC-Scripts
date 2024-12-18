@@ -1,4 +1,4 @@
-//DEfine the scope
+// Define the scope
 targetScope='resourceGroup'
 
 // Parameters see parameters.json for values
@@ -13,6 +13,12 @@ param keyVaultResourceGroup string // Resource group containing the Key Vault
 param containerAppLogAnalyticsName string // Unique name for the Log Analytics workspace
 param sqlAdminUsername string // Default SQL admin username
 param globalIntUiBaseUrl string
+param redisCacheName string // Name of the Redis Cache instance
+param b33MockApiName string // Name for the B33 Mock API container app
+param gatewayReqApiName string // Name for the Gateway Request API container app
+param globalIntApiName string // Name for the Global Integration API container app
+param globalIntUiName string // Name for the Global Integration UI container app
+param grpcServiceName string // Name for the GRPC service container app
 
 var tags = {
   environment: 'production'
@@ -26,6 +32,7 @@ resource kv 'Microsoft.KeyVault/vaults@2021-06-01-preview' existing = {
   scope: resourceGroup(subscriptionId, keyVaultResourceGroup)
 }
 
+// Creates the SQL Server and the three named databses
 module sql './sql.bicep' = {
   name: 'deploySQLDatabases'
   params: {
@@ -35,6 +42,7 @@ module sql './sql.bicep' = {
   }
 }
 
+// Create a Log Analytics workspace with Application Insights
 module logAnalyticsWithAppInsightsModule './logs.bicep' = {
   name: 'logAnalyticsWithAppInsightsDeployment'
   params: {
@@ -46,7 +54,7 @@ module logAnalyticsWithAppInsightsModule './logs.bicep' = {
   }
 }
 
-//Not sure we need these but putting here just in case
+//Not deleting these just in case they are needed later
 //output logAnalyticsWorkspaceId string = logAnalyticsWithAppInsightsModule.outputs.logAnalyticsWorkspaceId
 //output appInsightsId string = logAnalyticsWithAppInsightsModule.outputs.appInsightsId
 //output appInsightsInstrumentationKey string = logAnalyticsWithAppInsightsModule.outputs.appInsightsInstrumentationKey
@@ -62,25 +70,28 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2021-11-01' = {
   properties: {
     minimumTlsVersion: '1.2'
   }
-  //dependsOn: [resourceGroupModule]
 }
 
 // Define topics to create within the namespace
+//Topics used by both subscriptions
 var bothTopics = [
   'newrsimessagesubmitted.integrationevent'
   'rsimessagepublished.integrationevent'
 ]
 
+// Topics used only by the global Subscription
 var globalTopics = [
   'newrsimessagerecieved.integrationevent'
   'requeststatuschangedtocancelled.integrationEvent'
 ]
 
+// Topics used only by the gateway Subscription
 var gatewayTopics = [ 
   'stopconsumerrequest.integrationevent'
   'restartconsumerrequest.integrationevent'
 ]
 
+// Concatenate all topics
 var topics = union(bothTopics, globalTopics, gatewayTopics)
 
 // Create each topic in the Service Bus Namespace
@@ -92,6 +103,7 @@ resource serviceBusTopics 'Microsoft.ServiceBus/namespaces/topics@2021-11-01' = 
   }
 }]
 
+// Add Subcriptions for topics that require global only
 module globalServiceBusSubscriptions './Subscriptions.bicep' = [for globtopic in globalTopics: {
   name: 'glSrvBusSubDep.${globtopic}'
   params: {
@@ -106,6 +118,7 @@ module globalServiceBusSubscriptions './Subscriptions.bicep' = [for globtopic in
   ]
 }]
 
+// Add Subcriptions for topics that require gateway only
 module gatewayServiceBusSubscriptions './Subscriptions.bicep' = [for gatetopic in gatewayTopics: {
   name: 'gateServBusSubDeploy.${gatetopic}'
   params: {
@@ -120,6 +133,7 @@ module gatewayServiceBusSubscriptions './Subscriptions.bicep' = [for gatetopic i
   ]
 }]
 
+// Add Subcriptions for topics that require both
 module bothServiceBusSubscriptions './Subscriptions.bicep' = [for bothtopic in bothTopics: {
   name: 'bothServBusSubDeploy.${bothtopic}'
   params: {
@@ -134,6 +148,7 @@ module bothServiceBusSubscriptions './Subscriptions.bicep' = [for bothtopic in b
   ]
 }]
 
+// Create a Log Analytics workspace for the container apps
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: containerAppLogAnalyticsName
   location: resourceGroupLocation
@@ -144,6 +159,30 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   }
 }
 
+// Reference to the existing Redis Cache instance
+resource redisCache 'Microsoft.Cache/Redis@2023-08-01' existing = {
+  name: redisCacheName
+}
+
+// Create the Building 33 Mock API Container App
+module build33ContainerApp './building33-container-app.bicep' = {
+  name: 'building33ContainerAppDeployment'
+  params: {
+    containerAppName: b33MockApiName
+    tags: tags
+    location: resourceGroupLocation
+    containerAppEnvName: containerAppEnvName
+    appInsightsName: appInsightsName
+    redisHostUrl: kv.getSecret('RedisHostUrl')
+    dockerImage: 'attonbomb/building33mockapi:latest'
+  }
+  dependsOn: [
+    redisCache
+    logAnalyticsWithAppInsightsModule
+  ]
+}
+
+// Create the Gateway Request API Container App
 module gatewayReqApiContainerApp './gateway-container-app.bicep' = {
   name: 'gatewayReqApiContainerAppDeployment'
   params: {
@@ -154,7 +193,7 @@ module gatewayReqApiContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: kv.getSecret('SqlDbConnectionString')
     dockerImage: 'attonbomb/gateway-request-api:latest'
-    containerAppName: 'gateway-request-api-iac'
+    containerAppName: gatewayReqApiName
     gatewayUiBaseUrl: 'not-needed'
     gatewayApiBaseUrl: 'not-needed'
   }
@@ -166,6 +205,7 @@ module gatewayReqApiContainerApp './gateway-container-app.bicep' = {
   ]
 }
 
+// Create the Global Integration API Container App
 module globalIntApiContainerApp './gateway-container-app.bicep' = {
   name: 'globalIntApiContainerAppDeployment'
   params: {
@@ -176,7 +216,7 @@ module globalIntApiContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: kv.getSecret('GlobalSqlDbConnectionString')
     dockerImage: 'attonbomb/gateway-global-integration-api:latest'
-    containerAppName: 'gateway-global-int-api-iac'
+    containerAppName: globalIntApiName
     gatewayUiBaseUrl: globalIntUiBaseUrl
     gatewayApiBaseUrl: 'not-needed'
   }
@@ -185,6 +225,7 @@ module globalIntApiContainerApp './gateway-container-app.bicep' = {
   ]
 }
 
+// Create the Global Integration UI Container App
 module globalIntUiContainerApp './gateway-container-app.bicep' = {
   name: 'globalIntUiContainerAppDeployment'
   params: {
@@ -195,7 +236,7 @@ module globalIntUiContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: 'no-db'
     dockerImage: 'attonbomb/systemadmin:latest'
-    containerAppName: 'gateway-global-int-ui-iac'
+    containerAppName: globalIntUiName
     gatewayUiBaseUrl: 'not-needed'
     gatewayApiBaseUrl: globalIntApiContainerApp.outputs.containerAppBaseUrl
   }
@@ -204,6 +245,7 @@ module globalIntUiContainerApp './gateway-container-app.bicep' = {
   ]
 }
 
+// Create the Gateway GRPC Service Container App
 module grpcContainerApp './gateway-container-app.bicep' = {
   name: 'grpcContainerAppDeployment'
   params: {
@@ -214,11 +256,40 @@ module grpcContainerApp './gateway-container-app.bicep' = {
     serviceBusName: serviceBusName
     sqlConnString: kv.getSecret('GrpcSqlDbConnectionString')
     dockerImage: 'attonbomb/gatewaygrpcservice:latest'
-    containerAppName: 'gateway-grpc-service-iac'
-    gatewayUiBaseUrl: 'not-needed'
+    containerAppName: grpcServiceName
+    gatewayUiBaseUrl: build33ContainerApp.outputs.containerAppBaseUrl
     gatewayApiBaseUrl: 'not-needed'
   }
   dependsOn: [
+    build33ContainerApp
     globalIntUiContainerApp
   ]
 }
+
+// List of all the applications to create availability tests for
+var availabilityTestApps = [
+  b33MockApiName
+  gatewayReqApiName
+  globalIntApiName
+  grpcServiceName
+]
+
+// Create an availability test for each application in the list
+module availabilityTests './availability-test.bicep' = [for app in availabilityTestApps: {
+  name: 'availability-test-${app}'
+  params: {
+    location: resourceGroupLocation
+    appInsightsName: appInsightsName
+    containerAppName: app
+    testEndpoint: '/health'
+    testLocations: [
+      'emea-ru-msa-edge' // UK South
+    ]
+  }
+  dependsOn: [
+    build33ContainerApp
+    gatewayReqApiContainerApp
+    globalIntApiContainerApp
+    grpcContainerApp
+  ]
+}]
