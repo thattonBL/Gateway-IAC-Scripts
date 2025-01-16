@@ -70,7 +70,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
           value: appInsights.properties.ConnectionString
         }
       ]
-      activeRevisionsMode: 'Multiple'
+      activeRevisionsMode: 'Single'
     }
     template: {
       containers: [
@@ -85,6 +85,32 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
             {
               name: 'REDIS_HOST'
               secretRef: 'azure-redis-connection'
+            }
+          ]
+          probes: [
+            {
+              type: 'Liveness'
+              tcpSocket: {
+                port: 8080
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 30
+            }
+            {
+              type: 'Readiness'
+              tcpSocket: {
+                port: 8080
+              }
+              initialDelaySeconds: 5
+              periodSeconds: 20
+            }
+            {
+              type: 'Startup'
+              tcpSocket: {
+                port: 8080
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 20
             }
           ]
           resources: {

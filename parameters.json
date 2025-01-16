@@ -18,10 +18,10 @@
         "value": "gateway-iac-appinsights"
       },
       "serviceBusName": {
-        "value": "gateway-iac-messaging"
+        "value": "gateway-iac-messaging-th"
       },
       "sqlServerName": {
-        "value": "gateway-iac-sqlserver"
+        "value": "gateway-iac-sqlserver-th"
       },
       "keyVaultName": {
         "value": "gateway-iac-keyvault"
