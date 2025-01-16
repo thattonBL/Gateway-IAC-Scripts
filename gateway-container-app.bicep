@@ -59,7 +59,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
         external: true
         clientCertificateMode: 'ignore'
         targetPort: 8080
-        allowInsecure: true
+        allowInsecure: false
         traffic: [
           {
             latestRevision: true
@@ -96,7 +96,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
           value: gatewayApiBaseUrl
         }
       ]
-      activeRevisionsMode: 'Multiple'
+      activeRevisionsMode: 'Single'
     }
     template: {
       containers: [
@@ -123,6 +123,32 @@ resource containerApp 'Microsoft.App/containerApps@2023-08-01-preview' = {
             {
               name: 'BASE_URL'
               secretRef: 'api-base-url'           
+            }
+          ]
+          probes: [
+            {
+              type: 'Liveness'
+              tcpSocket: {
+                port: 8080
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 30
+            }
+            {
+              type: 'Readiness'
+              tcpSocket: {
+                port: 8080
+              }
+              initialDelaySeconds: 5
+              periodSeconds: 20
+            }
+            {
+              type: 'Startup'
+              tcpSocket: {
+                port: 8080
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 20
             }
           ]
           resources: {
